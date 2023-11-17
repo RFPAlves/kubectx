@@ -156,18 +156,22 @@ list_namespaces() {
   cur="$(current_namespace)" || exit_err "error getting current namespace"
   ns_list=$(get_namespaces) || exit_err "error getting namespace list"
 
+  local i
+  i=0
   for c in $ns_list; do
   if [[ -n "${_KUBECTX_FORCE_COLOR:-}" || \
        -t 1 && -z "${NO_COLOR:-}" ]]; then
     # colored output mode
     if [[ "${c}" = "${cur}" ]]; then
-      echo "${cur_ctx_bg}${cur_ctx_fg}${c}${normal}"
+      echo "${cur_ctx_bg}${cur_ctx_fg}[${i}] ${c}${normal}"
     else
-      echo "${c}"
+      echo "[${i}] ${c}"
     fi
   else
-    echo "${c}"
+    echo "[${i}] ${c}"
   fi
+
+  ((i=i+1))
   done
 }
 
@@ -211,6 +215,16 @@ main() {
       echo "error: unrecognized flag \"${1}\"" >&2
       usage
       exit 1
+    elif echo ${1} | grep -Pq '^\d+$'; then
+      local ctxN
+      nmsp=$(list_namespaces | grep "${1}")
+
+      if [[ $? -eq 0 ]]; then
+        set_namespace $(cut -d " " -f 2 <<< "$nmsp")
+      else
+        echo "error: Namespace index \"${1}\" not found." >&2
+        exit 1
+      fi
     elif [[ "${1}" =~ (.+)=(.+) ]]; then
       alias_context "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
     else
